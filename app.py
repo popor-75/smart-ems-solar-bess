@@ -22,27 +22,36 @@ def load_ems_data(base_dir):
       base_dir, "weather1_4yr", "open-meteo-13.88N100.43E7m.csv"
   )
 
-  # 1. อ่านไฟล์โซลาร์ 48 ไฟล์
+ # 1. อ่านไฟล์โซลาร์จากโฟลเดอร์ solar_4yr หรือ solar_4yr_* ทั้งหมด
   solar_files = sorted(
-      glob.glob(os.path.join(solar_folder, "**", "*.xlsx"), recursive=True)
+      glob.glob(os.path.join(base_dir, "solar_4yr*", "**", "*.xlsx"), recursive=True)
   )
   solar_list = []
   for f in solar_files:
-    temp = pd.read_excel(f, sheet_name="Sheet1", header=1)
-    temp["source_file"] = os.path.basename(f)
-    solar_list.append(temp)
+    try:
+      temp = pd.read_excel(f, sheet_name="Sheet1", header=1)
+      temp["source_file"] = os.path.basename(f)
+      solar_list.append(temp)
+    except Exception:
+      pass
 
-  solar_df = pd.concat(solar_list, ignore_index=True)
-  solar_df["Statistical Period"] = pd.to_datetime(
-      solar_df["Statistical Period"], errors="coerce"
-  )
-  solar_df = (
-      solar_df.dropna(subset=["Statistical Period"])
-      .sort_values("Statistical Period")
-      .drop_duplicates(subset=["Statistical Period"])
-      .set_index("Statistical Period")
-  )
-
+  if solar_list:
+    solar_df = pd.concat(solar_list, ignore_index=True)
+    solar_df["Statistical Period"] = pd.to_datetime(
+        solar_df["Statistical Period"], errors="coerce"
+    )
+    solar_df = (
+        solar_df.dropna(subset=["Statistical Period"])
+        .sort_values("Statistical Period")
+        .drop_duplicates(subset=["Statistical Period"])
+        .set_index("Statistical Period")
+    )
+    s_num = solar_df.select_dtypes(include=[np.number]).copy()
+    s_by_date = s_num.copy()
+    s_by_date["date_key"] = s_by_date.index.date
+    s_daily_mean = s_by_date.groupby("date_key").mean(numeric_only=True)
+  else:
+    s_daily_mean = pd.DataFrame()
   # 2. อ่านไฟล์สภาพอากาศ (ใช้คอลัมน์จริงตามที่ตรวจสอบ)
   weather_df = pd.read_csv(weather_file, skiprows=3)
   weather_df["time"] = pd.to_datetime(weather_df["time"], errors="coerce")
@@ -74,6 +83,7 @@ def load_ems_data(base_dir):
   df = pd.concat([df, w_5min], axis=1)
 
   # เติมข้อมูลโซลาร์รายวันลงในแต่ละวัน
+if not s_daily_mean.empty:
   for col in s_daily_mean.columns:
     df[f"solar_{col}"] = df["date_key"].map(s_daily_mean[col])
 
