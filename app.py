@@ -185,7 +185,7 @@ with st.sidebar:
 with st.spinner("กำลังโหลดและประมวลผลข้อมูล 4 ปี ทุก 5 นาที..."):
     df_all, ghi_col, temp_col, n_solar_files = load_ems_data(base_dir)
 
-st.sidebar.success(f"โหลดไฟล์โซลาร์สำเร็จ {n_solar_files} ไฟล์")
+# st.sidebar.success(f"โหลดไฟล์โซลาร์สำเร็จ {n_solar_files} ไฟล์")
 
 col_f1, col_f2 = st.columns([1, 2])
 with col_f1:
